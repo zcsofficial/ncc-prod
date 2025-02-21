@@ -44,8 +44,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Get the last inserted user ID to link with the cadets table
         $user_id = $conn->lastInsertId();
         
-        // Insert into the cadets table (user_id, full_name, dob, rank, email, contact number, emergency contact number, profile_picture)
-        $stmt = $conn->prepare("INSERT INTO cadets (user_id, full_name, dob, rank, email, contact_number, emergency_contact_number, profile_picture) 
+        // Insert into the cadets table (user_id, full_name, dob, `rank`, email, contact number, emergency contact number, profile_picture)
+        $stmt = $conn->prepare("INSERT INTO cadets (user_id, full_name, dob, `rank`, email, contact_number, emergency_contact_number, profile_picture) 
             VALUES (:user_id, :full_name, :dob, :rank, :email, :contact_number, :emergency_contact_number, :profile_picture)");
         $stmt->bindParam(':user_id', $user_id);
         $stmt->bindParam(':full_name', $full_name);
@@ -62,6 +62,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         // Redirect to a success page or show a success message
         echo "Registration successful!";
+        header('index.php');
         
     } catch (PDOException $e) {
         // If there is an error, roll back the transaction
@@ -97,7 +98,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </div>
             <div class="mb-3">
                 <label for="rank" class="form-label">Rank</label>
-                <input type="text" name="rank" id="rank" class="form-control" required>
+                <select name="rank" id="rank" class="form-control">
+                    <option value="None" selected>None</option>
+                    <option value="ASSOCIATE NCC OFFICER (ANO)">ASSOCIATE NCC OFFICER (ANO)</option>
+                    <option value="SENIOR UNDER OFFICER (SUO)">SENIOR UNDER OFFICER (SUO)</option>
+                    <option value="UNDER OFFICER (UO)">UNDER OFFICER (UO)</option>
+                    <option value="COMPANY SERGEANT MAJOR (CSM)">COMPANY SERGEANT MAJOR (CSM)</option>
+                    <option value="COMPANY QUARTER MASTER SERGEANT (CQMS)">COMPANY QUARTER MASTER SERGEANT (CQMS)</option>
+                    <option value="SERGEANT (SGT)">SERGEANT (SGT)</option>
+                    <option value="CORPORAL (CPL)">CORPORAL (CPL)</option>
+                    <option value="LANCE CORPORAL (L/CPL)">LANCE CORPORAL (L/CPL)</option>
+                    <option value="CADET (CDT)">CADET (CDT)</option>
+                </select>
             </div>
             <div class="mb-3">
                 <label for="password" class="form-label">Password</label>

@@ -44,8 +44,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Get the last inserted user ID to link with the cadets table
         $user_id = $conn->lastInsertId();
         
-        // Insert into the cadets table (user_id, full_name, dob, rank, email, contact number, emergency contact number, profile_picture)
-        $stmt = $conn->prepare("INSERT INTO cadets (user_id, full_name, dob, rank, email, contact_number, emergency_contact_number, profile_picture) 
+        // Insert into the cadets table (user_id, full_name, dob, `rank`, email, contact number, emergency contact number, profile_picture)
+        $stmt = $conn->prepare("INSERT INTO cadets (user_id, full_name, dob, `rank`, email, contact_number, emergency_contact_number, profile_picture) 
             VALUES (:user_id, :full_name, :dob, :rank, :email, :contact_number, :emergency_contact_number, :profile_picture)");
         $stmt->bindParam(':user_id', $user_id);
         $stmt->bindParam(':full_name', $full_name);
@@ -60,13 +60,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Commit the transaction
         $conn->commit();
         
-        // Redirect to a success page or show a success message
-        if ($stmt->execute()) {
-            $_SESSION['success_message'] = "Cadet registered successfully!";
-            header("Location: admin_console.php");
-        } else {
-            $_SESSION['error_message'] = "There was an error registering the cadet. Please try again.";
-        }
+        // Redirect to the admin_console.php page after successful registration
+        header('Location: admin_console.php');
+        exit; // Ensure no further code is executed
         
     } catch (PDOException $e) {
         // If there is an error, roll back the transaction
@@ -75,4 +71,3 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 ?>
-

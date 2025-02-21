@@ -2,8 +2,8 @@
 // Database connection settings
 $host = 'localhost';        // Database host (usually 'localhost')
 $dbname = 'ncc_prod'; // Your database name
-$username = 'root';          // Your database username
-$password = '';              // Your database password (empty if there's no password)
+$username = 'adnan';          // Your database username
+$password = 'Adnan@66202';              // Your database password (empty if there's no password)
 
 try {
     // Create a new PDO instance and set error mode to exception
