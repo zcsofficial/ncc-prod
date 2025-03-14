@@ -17,7 +17,7 @@ try {
 
 // Fetch all distinct ranks from the cadets table for eligibility checkboxes
 try {
-    $stmt_ranks = $conn->prepare("SELECT DISTINCT `rank` FROM cadets ORDER BY `rank`");
+    $stmt_ranks = $conn->prepare("SELECT DISTINCT `rank` FROM cadets WHERE `rank` IS NOT NULL ORDER BY `rank`");
     $stmt_ranks->execute();
     $available_ranks = $stmt_ranks->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {
@@ -25,15 +25,20 @@ try {
     echo "Error fetching ranks: " . $e->getMessage();
 }
 
-// Advanced eligibility check function
-function isEligible($cadetId, $conn) {
+// Advanced eligibility check function with notes
+function isEligible($cadetId, $conn, $campEligibility) {
+    $result = ['eligible' => false, 'notes' => []];
+    
     try {
         // Fetch cadet details
         $cadetStmt = $conn->prepare("SELECT * FROM cadets WHERE id = :cadet_id");
         $cadetStmt->execute(['cadet_id' => $cadetId]);
         $cadet = $cadetStmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$cadet) return false;
+        if (!$cadet) {
+            $result['notes'][] = "Cadet not found.";
+            return $result;
+        }
 
         // Calculate attendance percentage
         $totalEventsStmt = $conn->prepare("SELECT COUNT(*) FROM events WHERE event_date <= CURDATE()");
@@ -51,31 +56,46 @@ function isEligible($cadetId, $conn) {
         $achievementsStmt->execute(['cadet_id' => $cadetId]);
         $achievements = $achievementsStmt->fetchColumn();
 
-        // Fetch latest camp eligibility criteria
-        $campStmt = $conn->prepare("SELECT eligibility FROM camps ORDER BY created_at DESC LIMIT 1");
-        $campStmt->execute();
-        $eligibility = $campStmt->fetchColumn();
-
         // Parse eligibility criteria
-        $eligibilityData = [];
-        if ($eligibility) {
-            preg_match('/Ranks: (.*?), Achievements: (\d+), Attendance: (\d+)%/', $eligibility, $matches);
+        $eligibilityData = ['ranks' => [], 'achievements' => 0, 'attendance' => 0];
+        if ($campEligibility) {
+            preg_match('/Ranks: (.*?), Achievements: (\d+), Attendance: (\d+)%/', $campEligibility, $matches);
             if (count($matches) === 4) {
                 $eligibilityData['ranks'] = array_map('trim', explode(',', $matches[1]));
                 $eligibilityData['achievements'] = (int)$matches[2];
                 $eligibilityData['attendance'] = (int)$matches[3];
+            } else {
+                $result['notes'][] = "Invalid eligibility format.";
             }
         }
 
-        // Check eligibility
+        // Check eligibility with notes
         $rankEligible = empty($eligibilityData['ranks']) || in_array($cadet['rank'], $eligibilityData['ranks']);
-        $achievementsEligible = $achievements >= ($eligibilityData['achievements'] ?? 0);
-        $attendanceEligible = $attendancePercentage >= ($eligibilityData['attendance'] ?? 0);
+        if ($rankEligible) {
+            $result['notes'][] = "Rank: Eligible (" . htmlspecialchars($cadet['rank']) . " is allowed).";
+        } else {
+            $result['notes'][] = "Rank: Not eligible (" . htmlspecialchars($cadet['rank']) . " not in " . implode(', ', $eligibilityData['ranks']) . ").";
+        }
 
-        return $rankEligible && $achievementsEligible && $attendanceEligible;
+        $achievementsEligible = $achievements >= $eligibilityData['achievements'];
+        if ($achievementsEligible) {
+            $result['notes'][] = "Achievements: Eligible ($achievements >= " . $eligibilityData['achievements'] . ").";
+        } else {
+            $result['notes'][] = "Achievements: Not eligible ($achievements < " . $eligibilityData['achievements'] . ").";
+        }
+
+        $attendanceEligible = $attendancePercentage >= $eligibilityData['attendance'];
+        if ($attendanceEligible) {
+            $result['notes'][] = "Attendance: Eligible (" . round($attendancePercentage, 2) . "% >= " . $eligibilityData['attendance'] . "%).";
+        } else {
+            $result['notes'][] = "Attendance: Not eligible (" . round($attendancePercentage, 2) . "% < " . $eligibilityData['attendance'] . "%).";
+        }
+
+        $result['eligible'] = $rankEligible && $achievementsEligible && $attendanceEligible;
+        return $result;
     } catch (PDOException $e) {
-        echo "Error checking eligibility: " . $e->getMessage();
-        return false;
+        $result['notes'][] = "Error checking eligibility: " . $e->getMessage();
+        return $result;
     }
 }
 
@@ -99,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isAdmin && isset($_POST['create_ca
             'camp_date' => $campDate,
             'eligibility' => $eligibilityDescription
         ]);
-        header("Location: camp.php"); // Redirect to avoid form resubmission
+        header("Location: camp.php");
         exit();
     } catch (PDOException $e) {
         echo "Error creating camp: " . $e->getMessage();
@@ -201,6 +221,12 @@ if ($isLoggedIn) {
             font-size: 0.9em;
         }
 
+        .eligibility-notes {
+            font-size: 0.85em;
+            color: #555;
+            margin-top: 5px;
+        }
+
         .btn-primary, .btn-success {
             background-color: #FF3A3A; /* Neon Red */
             border-color: #FF3A3A;
@@ -244,62 +270,87 @@ if ($isLoggedIn) {
     </style>
 </head>
 <body>
-    <!-- Navbar (Integrated Inline) -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm rounded-pill mt-3 mx-auto" style="max-width: 95%; padding: 10px 30px;">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="index.php">
-                <img src="logo.png" alt="Logo" height="50">
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
-                    <?php if ($isLoggedIn): ?>
-                        <li class="nav-item"><a class="nav-link" href="attendance.php">Attendance</a></li>
-                    <?php endif; ?>
-                    <li class="nav-item"><a class="nav-link" href="camp.php">Camps</a></li>
-                    <li class="nav-item"><a class="nav-link" href="testimonials.php">Testimonial</a></li>
-                    <li class="nav-item"><a class="nav-link" href="achievement.php">Achievements</a></li>
-                    <li class="nav-item"><a class="nav-link" href="contact.php">Contact</a></li>
-                </ul>
+    <!-- Navbar -->
+    <!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm rounded-pill mt-3 mx-auto" style="max-width: 95%; padding: 10px 30px;">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="index.php">
+            <img src="logo.png" alt="Logo" height="50">
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
                 <?php if ($isLoggedIn): ?>
-                    <div class="dropdown ms-3">
-                        <button class="btn btn-outline-secondary rounded-pill" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-bell"></i>
-                            <span class="badge bg-danger"><?= $unreadCount ?></span>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationDropdown">
+                    <li class="nav-item"><a class="nav-link" href="attendance.php">Attendance</a></li>
+                <?php endif; ?>
+                <li class="nav-item"><a class="nav-link" href="camp.php">Camps</a></li>
+                <li class="nav-item"><a class="nav-link" href="testimonials.php">Testimonial</a></li>
+                <li class="nav-item"><a class="nav-link" href="achievement.php">Achievements</a></li>
+                <li class="nav-item"><a class="nav-link" href="contact.php">Contact</a></li>
+            </ul>
+            <?php if ($isLoggedIn): ?>
+                <?php
+                // Fetch notifications for the logged-in user
+                try {
+                    $stmt_notifications = $conn->prepare("SELECT * FROM notifications WHERE user_id = :user_id ORDER BY created_at DESC LIMIT 5");
+                    $stmt_notifications->bindParam(':user_id', $_SESSION['user_id']);
+                    $stmt_notifications->execute();
+                    $notifications = $stmt_notifications->fetchAll(PDO::FETCH_ASSOC);
+
+                    $unreadCount = 0;
+                    foreach ($notifications as $notification) {
+                        if (isset($notification['read']) && $notification['read'] == 0) {
+                            $unreadCount++;
+                        }
+                    }
+                } catch (PDOException $e) {
+                    $notifications = [];
+                    $unreadCount = 0;
+                }
+                ?>
+                <div class="dropdown ms-3">
+                    <button class="btn btn-outline-secondary rounded-pill" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge bg-danger"><?= $unreadCount ?></span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationDropdown">
+                        <?php if (!empty($notifications)): ?>
                             <?php foreach ($notifications as $notification): ?>
-                                <li><a class="dropdown-item" href="#">
+                                <li><a class="dropdown-item" href="notifications.php">
                                     <i class="fas fa-bell"></i> <?= htmlspecialchars($notification['message']) ?>
+                                    <small class="text-muted d-block"><?= htmlspecialchars($notification['created_at']) ?></small>
                                 </a></li>
                             <?php endforeach; ?>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-center" href="notifications.php">View all notifications</a></li>
-                        </ul>
-                    </div>
-                    <div class="dropdown ms-3">
-                        <button class="btn btn-primary dropdown-toggle rounded-pill" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-user"></i> Profile
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-                            <li><a class="dropdown-item" href="profile.php"><i class="fas fa-id-card"></i> View Profile</a></li>
-                            <li><a class="dropdown-item" href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                            <?php if ($isAdmin): ?>
-                                <li><a class="dropdown-item" href="admin_console.php"><i class="fas fa-cog"></i> Admin Console</a></li>
-                            <?php endif; ?>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-                        </ul>
-                    </div>
-                <?php else: ?>
-                    <a href="login.php" class="btn btn-primary ms-3 rounded-pill">Login</a>
-                <?php endif; ?>
-            </div>
+                        <?php else: ?>
+                            <li><span class="dropdown-item-text">No notifications</span></li>
+                        <?php endif; ?>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-center" href="notifications.php">View all notifications</a></li>
+                    </ul>
+                </div>
+                <div class="dropdown ms-3">
+                    <button class="btn btn-primary dropdown-toggle rounded-pill" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user"></i> Profile
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+                        <li><a class="dropdown-item" href="profile.php"><i class="fas fa-id-card"></i> View Profile</a></li>
+                        <li><a class="dropdown-item" href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                        <?php if ($isAdmin): ?>
+                            <li><a class="dropdown-item" href="admin_console.php"><i class="fas fa-cog"></i> Admin Console</a></li>
+                        <?php endif; ?>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                    </ul>
+                </div>
+            <?php else: ?>
+                <a href="login.php" class="btn btn-primary ms-3 rounded-pill">Login</a>
+            <?php endif; ?>
         </div>
-    </nav>
+    </div>
+</nav>
 
     <!-- Main Content -->
     <div class="main-content">
@@ -318,17 +369,22 @@ if ($isLoggedIn) {
                                 <p><strong>Details:</strong> <?php echo htmlspecialchars($camp['camp_details']); ?></p>
                                 <p><strong>Eligibility:</strong> <?php echo htmlspecialchars($camp['eligibility']); ?></p>
 
-                                <!-- Eligibility Badge -->
+                                <!-- Eligibility Badge and Notes -->
                                 <?php
                                 $cadetStmt = $conn->prepare("SELECT id FROM cadets WHERE user_id = :user_id");
                                 $cadetStmt->execute(['user_id' => $_SESSION['user_id']]);
                                 $cadet = $cadetStmt->fetch(PDO::FETCH_ASSOC);
-                                $isCadetEligible = $cadet && isEligible($cadet['id'], $conn);
+                                $eligibilityResult = $cadet ? isEligible($cadet['id'], $conn, $camp['eligibility']) : ['eligible' => false, 'notes' => ['Not a cadet.']];
                                 ?>
-                                <?php if ($isLoggedIn && $isCadetEligible): ?>
-                                    <span class="badge bg-success">Eligible</span>
-                                <?php else: ?>
-                                    <span class="badge bg-danger">Not Eligible</span>
+                                <?php if ($isLoggedIn): ?>
+                                    <span class="badge <?= $eligibilityResult['eligible'] ? 'bg-success' : 'bg-danger' ?>">
+                                        <?= $eligibilityResult['eligible'] ? 'Eligible' : 'Not Eligible' ?>
+                                    </span>
+                                    <div class="eligibility-notes">
+                                        <?php foreach ($eligibilityResult['notes'] as $note): ?>
+                                            <div><?= htmlspecialchars($note) ?></div>
+                                        <?php endforeach; ?>
+                                    </div>
                                 <?php endif; ?>
 
                                 <!-- Delete Button (Admin Only) -->

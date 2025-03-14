@@ -1,52 +1,49 @@
 <?php
-// Include the database connection file
-require_once 'db.php';
+include 'db.php';
+session_start();
 
-// Check if the form is submitted
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Get the form data
-    $full_name = $_POST['full_name'];
-    $username = $_POST['username'];
-    $dob = $_POST['dob'];
-    $rank = $_POST['rank'];
-    $password = $_POST['password'];
-    $role = $_POST['role'];
-    $email = $_POST['email'];
-    $contact_number = $_POST['contact_number'];
-    $emergency_contact_number = $_POST['emergency_contact_number'];
-    
-    // Profile picture upload handling
-    $profile_picture = $_FILES['profile_picture']['name'];
-    $target_dir = "uploads/";
-    $target_file = $target_dir . basename($profile_picture);
-    
-    // Default profile picture if not uploaded
-    if (empty($profile_picture)) {
-        $profile_picture = 'default-profile.png';  // default image name
-    } else {
-        move_uploaded_file($_FILES['profile_picture']['tmp_name'], $target_file);
-    }
-
-    // Hash the password
-    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-    
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
         // Start transaction
         $conn->beginTransaction();
-        
-        // Insert into the users table (username, password, role)
+
+        // Insert into users table
+        $username = $_POST['username'];
+        $password = password_hash($_POST['password'], PASSWORD_DEFAULT); // Hash password
+        $role = $_POST['role'];
+
         $stmt = $conn->prepare("INSERT INTO users (username, password, role) VALUES (:username, :password, :role)");
         $stmt->bindParam(':username', $username);
-        $stmt->bindParam(':password', $hashed_password);
+        $stmt->bindParam(':password', $password);
         $stmt->bindParam(':role', $role);
         $stmt->execute();
-        
-        // Get the last inserted user ID to link with the cadets table
+
         $user_id = $conn->lastInsertId();
-        
-        // Insert into the cadets table (user_id, full_name, dob, `rank`, email, contact number, emergency contact number, profile_picture)
-        $stmt = $conn->prepare("INSERT INTO cadets (user_id, full_name, dob, `rank`, email, contact_number, emergency_contact_number, profile_picture) 
-            VALUES (:user_id, :full_name, :dob, :rank, :email, :contact_number, :emergency_contact_number, :profile_picture)");
+
+        // Handle file upload (profile picture)
+        $profile_picture = null;
+        if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] == 0) {
+            $allowed = ['jpg', 'jpeg', 'png'];
+            $ext = pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION);
+            if (in_array(strtolower($ext), $allowed) && $_FILES['profile_picture']['size'] <= 5 * 1024 * 1024) {
+                $profile_picture = 'uploads/' . uniqid() . '.' . $ext;
+                move_uploaded_file($_FILES['profile_picture']['tmp_name'], $profile_picture);
+            }
+        }
+
+        // Insert into cadets table
+        $full_name = $_POST['full_name'];
+        $dob = $_POST['dob'];
+        $rank = $_POST['rank'];
+        $email = $_POST['email'];
+        $contact_number = $_POST['contact_number'];
+        $emergency_contact_number = $_POST['emergency_contact_number'];
+        $cadet_batch = !empty($_POST['cadet_batch']) ? $_POST['cadet_batch'] : null;
+
+        $stmt = $conn->prepare("
+            INSERT INTO cadets (user_id, full_name, dob, `rank`, email, contact_number, emergency_contact_number, profile_picture, cadet_batch)
+            VALUES (:user_id, :full_name, :dob, :rank, :email, :contact_number, :emergency_contact_number, :profile_picture, :cadet_batch)
+        ");
         $stmt->bindParam(':user_id', $user_id);
         $stmt->bindParam(':full_name', $full_name);
         $stmt->bindParam(':dob', $dob);
@@ -55,19 +52,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->bindParam(':contact_number', $contact_number);
         $stmt->bindParam(':emergency_contact_number', $emergency_contact_number);
         $stmt->bindParam(':profile_picture', $profile_picture);
+        $stmt->bindParam(':cadet_batch', $cadet_batch, PDO::PARAM_STR);
         $stmt->execute();
-        
-        // Commit the transaction
+
+        // Commit transaction
         $conn->commit();
-        
-        // Redirect to the admin_console.php page after successful registration
-        header('Location: admin_console.php');
-        exit; // Ensure no further code is executed
-        
+
+        $_SESSION['success_message'] = "Cadet registered successfully!";
+        header("Location: admin_console.php");
+        exit();
     } catch (PDOException $e) {
-        // If there is an error, roll back the transaction
         $conn->rollBack();
-        echo "Error: " . $e->getMessage();
+        $_SESSION['error_message'] = "Error registering cadet: " . $e->getMessage();
+        header("Location: admin_console.php");
+        exit();
     }
 }
 ?>

@@ -9,21 +9,63 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
 }
 
 $user_id = $_SESSION['user_id'];
+$notificationMessage = '';
+$notificationType = '';
 
-// Fetch all distinct users from the database
+// Handle filters and sorting
+$rank_filter = isset($_GET['rank']) ? $_GET['rank'] : '';
+$batch_filter = isset($_GET['cadet_batch']) ? $_GET['cadet_batch'] : '';
+$sort_by = isset($_GET['sort_by']) ? $_GET['sort_by'] : 'created_at';
+$sort_order = isset($_GET['sort_order']) && $_GET['sort_order'] == 'ASC' ? 'ASC' : 'DESC';
+
+// Validate sort_by to prevent SQL injection
+$valid_sort_columns = ['id', 'username', 'role', 'created_at', 'full_name', 'email'];
+if (!in_array($sort_by, $valid_sort_columns)) {
+    $sort_by = 'created_at'; // Default fallback
+}
+
+// Fetch all distinct users from the database with filters and sorting
 try {
     $query = "
-        SELECT DISTINCT u.id, u.username, u.role, u.created_at, c.full_name, c.email 
+        SELECT DISTINCT u.id, u.username, u.role, u.created_at, c.full_name, c.email, c.`rank`, c.cadet_batch 
         FROM users u 
         LEFT JOIN cadets c ON u.id = c.user_id
-        ORDER BY u.created_at DESC
+        WHERE 1=1
     ";
+    
+    // Add filters
+    $params = [];
+    if (!empty($rank_filter)) {
+        $query .= " AND c.`rank` = :rank";
+        $params[':rank'] = $rank_filter;
+    }
+    if (!empty($batch_filter)) {
+        $query .= " AND c.cadet_batch = :cadet_batch";
+        $params[':cadet_batch'] = $batch_filter;
+    }
+
+    // Add sorting
+    $query .= " ORDER BY $sort_by $sort_order";
+
     $stmt = $conn->prepare($query);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
     $stmt->execute();
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fetch distinct ranks and batches for filter dropdowns
+    $rank_stmt = $conn->query("SELECT DISTINCT `rank` FROM cadets WHERE `rank` IS NOT NULL ORDER BY `rank`");
+    $ranks = $rank_stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    $batch_stmt = $conn->query("SELECT DISTINCT cadet_batch FROM cadets WHERE cadet_batch IS NOT NULL ORDER BY cadet_batch");
+    $batches = $batch_stmt->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {
     $notificationMessage = "Error fetching users: " . $e->getMessage();
     $notificationType = "danger";
+    $users = [];
+    $ranks = [];
+    $batches = [];
 }
 
 // Fetch notifications for the logged-in user
@@ -174,6 +216,15 @@ $isAdmin = true;
             color: #28a745;
         }
 
+        .filter-form {
+            margin-bottom: 20px;
+        }
+
+        .sort-icon {
+            cursor: pointer;
+            margin-left: 5px;
+        }
+
         @media (max-width: 768px) {
             .table-responsive {
                 font-size: 14px;
@@ -182,11 +233,15 @@ $isAdmin = true;
                 width: 100%;
                 margin-bottom: 10px;
             }
+            .filter-form select, .filter-form button {
+                width: 100%;
+                margin-bottom: 10px;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Navbar (Integrated Inline) -->
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm rounded-pill mt-3 mx-auto" style="max-width: 95%; padding: 10px 30px;">
         <div class="container-fluid">
             <a class="navbar-brand" href="index.php">
@@ -236,7 +291,7 @@ $isAdmin = true;
     </nav>
 
     <!-- Notification -->
-    <?php if (isset($notificationMessage)): ?>
+    <?php if (!empty($notificationMessage)): ?>
         <div class="notification <?php echo $notificationType; ?> show" id="notification">
             <?php echo htmlspecialchars($notificationMessage); ?>
         </div>
@@ -248,10 +303,57 @@ $isAdmin = true;
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1 class="my-3">Manage Users</h1>
                 <div>
-                    <a href="register.php" class="btn btn-add me-2"><i class="fas fa-plus"></i> Add User</a>
+                    <a href="register_cadet.php" class="btn btn-add me-2"><i class="fas fa-plus"></i> Add User</a>
                     <a href="admin_console.php" class="btn btn-back"><i class="fas fa-arrow-left"></i> Back</a>
                 </div>
             </div>
+
+            <!-- Filter and Sort Form -->
+            <form method="GET" class="filter-form d-flex flex-wrap gap-3">
+                <div class="flex-grow-1">
+                    <label for="rank" class="form-label">Filter by Rank</label>
+                    <select name="rank" id="rank" class="form-select">
+                        <option value="">All Ranks</option>
+                        <?php foreach ($ranks as $rank): ?>
+                            <option value="<?= htmlspecialchars($rank) ?>" <?= $rank_filter == $rank ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($rank) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="flex-grow-1">
+                    <label for="cadet_batch" class="form-label">Filter by Batch</label>
+                    <select name="cadet_batch" id="cadet_batch" class="form-select">
+                        <option value="">All Batches</option>
+                        <?php foreach ($batches as $batch): ?>
+                            <option value="<?= htmlspecialchars($batch) ?>" <?= $batch_filter == $batch ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($batch) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="flex-grow-1">
+                    <label for="sort_by" class="form-label">Sort By</label>
+                    <select name="sort_by" id="sort_by" class="form-select">
+                        <option value="id" <?= $sort_by == 'id' ? 'selected' : '' ?>>ID</option>
+                        <option value="username" <?= $sort_by == 'username' ? 'selected' : '' ?>>Username</option>
+                        <option value="full_name" <?= $sort_by == 'full_name' ? 'selected' : '' ?>>Full Name</option>
+                        <option value="email" <?= $sort_by == 'email' ? 'selected' : '' ?>>Email</option>
+                        <option value="role" <?= $sort_by == 'role' ? 'selected' : '' ?>>Role</option>
+                        <option value="created_at" <?= $sort_by == 'created_at' ? 'selected' : '' ?>>Created At</option>
+                    </select>
+                </div>
+                <div class="flex-grow-1">
+                    <label for="sort_order" class="form-label">Order</label>
+                    <select name="sort_order" id="sort_order" class="form-select">
+                        <option value="ASC" <?= $sort_order == 'ASC' ? 'selected' : '' ?>>Ascending</option>
+                        <option value="DESC" <?= $sort_order == 'DESC' ? 'selected' : '' ?>>Descending</option>
+                    </select>
+                </div>
+                <div class="align-self-end">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Apply</button>
+                </div>
+            </form>
 
             <!-- Users Table -->
             <div class="table-responsive">
@@ -263,6 +365,8 @@ $isAdmin = true;
                             <th>Full Name</th>
                             <th>Email</th>
                             <th>Role</th>
+                            <th>Rank</th>
+                            <th>Batch</th>
                             <th>Created At</th>
                             <th>Actions</th>
                         </tr>
@@ -276,6 +380,8 @@ $isAdmin = true;
                                     <td><?php echo htmlspecialchars($user['full_name'] ?: 'N/A'); ?></td>
                                     <td><?php echo htmlspecialchars($user['email'] ?: 'N/A'); ?></td>
                                     <td><?php echo htmlspecialchars($user['role']); ?></td>
+                                    <td><?php echo htmlspecialchars($user['rank'] ?: 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($user['cadet_batch'] ?: 'N/A'); ?></td>
                                     <td><?php echo htmlspecialchars($user['created_at']); ?></td>
                                     <td class="actions">
                                         <a href="edit_user.php?id=<?php echo $user['id']; ?>" class="edit"><i class="fas fa-edit"></i> Edit</a>
@@ -285,7 +391,7 @@ $isAdmin = true;
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="7" class="text-center">No users found.</td>
+                                <td colspan="9" class="text-center">No users found.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -311,11 +417,19 @@ $isAdmin = true;
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
     <script>
-        // Notification fade-out
         $(document).ready(function() {
-            <?php if (isset($notificationMessage)): ?>
+            <?php if (!empty($notificationMessage)): ?>
                 $('#notification').fadeIn().delay(3000).fadeOut();
             <?php endif; ?>
+
+            // Handle sort icon clicks (optional enhancement)
+            $('.sort-icon').on('click', function() {
+                const column = $(this).data('sort');
+                const currentOrder = $('#sort_order').val();
+                $('#sort_by').val(column);
+                $('#sort_order').val(currentOrder === 'ASC' ? 'DESC' : 'ASC');
+                $('form.filter-form').submit();
+            });
         });
     </script>
 </body>

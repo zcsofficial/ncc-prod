@@ -1,6 +1,7 @@
 <?php
 // Include the database connection file
 require_once 'db.php';
+session_start(); // Start session for feedback messages
 
 // Check if the form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -14,6 +15,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = $_POST['email'];
     $contact_number = $_POST['contact_number'];
     $emergency_contact_number = $_POST['emergency_contact_number'];
+    $cadet_batch = !empty($_POST['cadet_batch']) ? $_POST['cadet_batch'] : null; // Handle optional cadet_batch
     
     // Profile picture upload handling
     $profile_picture = $_FILES['profile_picture']['name'];
@@ -24,7 +26,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (empty($profile_picture)) {
         $profile_picture = 'default-profile.png';  // default image name
     } else {
-        move_uploaded_file($_FILES['profile_picture']['tmp_name'], $target_file);
+        // Add basic file validation
+        $allowed = ['jpg', 'jpeg', 'png'];
+        $ext = strtolower(pathinfo($profile_picture, PATHINFO_EXTENSION));
+        if (in_array($ext, $allowed) && $_FILES['profile_picture']['size'] <= 5 * 1024 * 1024) {
+            move_uploaded_file($_FILES['profile_picture']['tmp_name'], $target_file);
+        } else {
+            $_SESSION['error_message'] = "Invalid file type or size exceeds 5MB.";
+            header("Location: admin_console.php");
+            exit();
+        }
     }
 
     // Hash the password
@@ -44,9 +55,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Get the last inserted user ID to link with the cadets table
         $user_id = $conn->lastInsertId();
         
-        // Insert into the cadets table (user_id, full_name, dob, `rank`, email, contact number, emergency contact number, profile_picture)
-        $stmt = $conn->prepare("INSERT INTO cadets (user_id, full_name, dob, `rank`, email, contact_number, emergency_contact_number, profile_picture) 
-            VALUES (:user_id, :full_name, :dob, :rank, :email, :contact_number, :emergency_contact_number, :profile_picture)");
+        // Insert into the cadets table (including cadet_batch)
+        $stmt = $conn->prepare("
+            INSERT INTO cadets (user_id, full_name, dob, `rank`, email, contact_number, emergency_contact_number, profile_picture, cadet_batch) 
+            VALUES (:user_id, :full_name, :dob, :rank, :email, :contact_number, :emergency_contact_number, :profile_picture, :cadet_batch)
+        ");
         $stmt->bindParam(':user_id', $user_id);
         $stmt->bindParam(':full_name', $full_name);
         $stmt->bindParam(':dob', $dob);
@@ -55,19 +68,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->bindParam(':contact_number', $contact_number);
         $stmt->bindParam(':emergency_contact_number', $emergency_contact_number);
         $stmt->bindParam(':profile_picture', $profile_picture);
+        $stmt->bindParam(':cadet_batch', $cadet_batch, PDO::PARAM_STR); // Bind cadet_batch
         $stmt->execute();
         
         // Commit the transaction
         $conn->commit();
         
-        // Redirect to a success page or show a success message
-        echo "Registration successful!";
-        header('index.php');
+        // Set success message and redirect
+        $_SESSION['success_message'] = "Cadet registered successfully!";
+        header("Location: admin_console.php");
+        exit();
         
     } catch (PDOException $e) {
-        // If there is an error, roll back the transaction
+        // Roll back the transaction on error
         $conn->rollBack();
-        echo "Error: " . $e->getMessage();
+        $_SESSION['error_message'] = "Error: " . $e->getMessage();
+        header("Location: admin_console.php");
+        exit();
     }
 }
 ?>
@@ -77,12 +94,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registration Page</title>
+    <title>Register Cadet</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
     <div class="container mt-5">
-        <h2 class="text-center">Register</h2>
+        <h2 class="text-center">Register New Cadet</h2>
         <form method="POST" enctype="multipart/form-data">
             <div class="mb-3">
                 <label for="full_name" class="form-label">Full Name</label>
@@ -98,8 +115,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </div>
             <div class="mb-3">
                 <label for="rank" class="form-label">Rank</label>
-                <select name="rank" id="rank" class="form-control">
-                    <option value="None" selected>None</option>
+                <select name="rank" id="rank" class="form-control" required>
+                    <option value="None">None</option>
                     <option value="ASSOCIATE NCC OFFICER (ANO)">ASSOCIATE NCC OFFICER (ANO)</option>
                     <option value="SENIOR UNDER OFFICER (SUO)">SENIOR UNDER OFFICER (SUO)</option>
                     <option value="UNDER OFFICER (UO)">UNDER OFFICER (UO)</option>
@@ -135,10 +152,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <input type="text" name="emergency_contact_number" id="emergency_contact_number" class="form-control" required>
             </div>
             <div class="mb-3">
-                <label for="profile_picture" class="form-label">Profile Picture</label>
-                <input type="file" name="profile_picture" id="profile_picture" class="form-control">
+                <label for="cadet_batch" class="form-label">Cadet Batch (Optional)</label>
+                <input type="text" name="cadet_batch" id="cadet_batch" class="form-control" placeholder="e.g., Batch 2023" maxlength="50">
             </div>
-            <button type="submit" class="btn btn-primary">Register</button>
+            <div class="mb-3">
+                <label for="profile_picture" class="form-label">Profile Picture (JPG, PNG, JPEG | Max: 5MB)</label>
+                <input type="file" name="profile_picture" id="profile_picture" class="form-control" accept=".jpg,.jpeg,.png">
+            </div>
+            <button type="submit" class="btn btn-primary">Register Cadet</button>
         </form>
     </div>
 

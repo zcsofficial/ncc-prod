@@ -92,7 +92,7 @@ $isAdmin = true;
             background-color: #343a40;
             color: #fff;
             width: 250px;
-            padding-top: 80px; /* Space for navbar */
+            padding-top: 80px;
             box-shadow: 2px 0 15px rgba(0, 0, 0, 0.1);
         }
 
@@ -242,35 +242,63 @@ $isAdmin = true;
     </style>
 </head>
 <body>
-    <!-- Navbar (Integrated Inline) -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm rounded-pill mt-3 mx-auto" style="max-width: 95%; padding: 10px 30px; position: fixed; top: 0; width: 100%; z-index: 1000;">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="index.php">
-                <img src="logo.png" alt="Logo" height="50">
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
+    <!-- Navbar -->
+   <!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm rounded-pill mt-3 mx-auto" style="max-width: 95%; padding: 10px 30px;">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="index.php">
+            <img src="logo.png" alt="Logo" height="50">
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
+                <?php if ($isLoggedIn): ?>
                     <li class="nav-item"><a class="nav-link" href="attendance.php">Attendance</a></li>
-                    <li class="nav-item"><a class="nav-link" href="camp.php">Camps</a></li>
-                    <li class="nav-item"><a class="nav-link" href="testimonials.php">Testimonial</a></li>
-                    <li class="nav-item"><a class="nav-link" href="achievement.php">Achievements</a></li>
-                    <li class="nav-item"><a class="nav-link" href="contact.php">Contact</a></li>
-                </ul>
+                <?php endif; ?>
+                <li class="nav-item"><a class="nav-link" href="camp.php">Camps</a></li>
+                <li class="nav-item"><a class="nav-link" href="testimonials.php">Testimonial</a></li>
+                <li class="nav-item"><a class="nav-link" href="achievement.php">Achievements</a></li>
+                <li class="nav-item"><a class="nav-link" href="contact.php">Contact</a></li>
+            </ul>
+            <?php if ($isLoggedIn): ?>
+                <?php
+                // Fetch notifications for the logged-in user
+                try {
+                    $stmt_notifications = $conn->prepare("SELECT * FROM notifications WHERE user_id = :user_id ORDER BY created_at DESC LIMIT 5");
+                    $stmt_notifications->bindParam(':user_id', $_SESSION['user_id']);
+                    $stmt_notifications->execute();
+                    $notifications = $stmt_notifications->fetchAll(PDO::FETCH_ASSOC);
+
+                    $unreadCount = 0;
+                    foreach ($notifications as $notification) {
+                        if (isset($notification['read']) && $notification['read'] == 0) {
+                            $unreadCount++;
+                        }
+                    }
+                } catch (PDOException $e) {
+                    $notifications = [];
+                    $unreadCount = 0;
+                }
+                ?>
                 <div class="dropdown ms-3">
                     <button class="btn btn-outline-secondary rounded-pill" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-bell"></i>
                         <span class="badge bg-danger"><?= $unreadCount ?></span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationDropdown">
-                        <?php foreach ($notifications as $notification): ?>
-                            <li><a class="dropdown-item" href="#">
-                                <i class="fas fa-bell"></i> <?= htmlspecialchars($notification['message']) ?>
-                            </a></li>
-                        <?php endforeach; ?>
+                        <?php if (!empty($notifications)): ?>
+                            <?php foreach ($notifications as $notification): ?>
+                                <li><a class="dropdown-item" href="notifications.php">
+                                    <i class="fas fa-bell"></i> <?= htmlspecialchars($notification['message']) ?>
+                                    <small class="text-muted d-block"><?= htmlspecialchars($notification['created_at']) ?></small>
+                                </a></li>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <li><span class="dropdown-item-text">No notifications</span></li>
+                        <?php endif; ?>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item text-center" href="notifications.php">View all notifications</a></li>
                     </ul>
@@ -282,14 +310,19 @@ $isAdmin = true;
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
                         <li><a class="dropdown-item" href="profile.php"><i class="fas fa-id-card"></i> View Profile</a></li>
                         <li><a class="dropdown-item" href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                        <li><a class="dropdown-item" href="admin_console.php"><i class="fas fa-cog"></i> Admin Console</a></li>
+                        <?php if ($isAdmin): ?>
+                            <li><a class="dropdown-item" href="admin_console.php"><i class="fas fa-cog"></i> Admin Console</a></li>
+                        <?php endif; ?>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                     </ul>
                 </div>
-            </div>
+            <?php else: ?>
+                <a href="login.php" class="btn btn-primary ms-3 rounded-pill">Login</a>
+            <?php endif; ?>
         </div>
-    </nav>
+    </div>
+</nav>
 
     <!-- Sidebar -->
     <div class="sidebar">
@@ -297,8 +330,8 @@ $isAdmin = true;
         <a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
         <a href="manage_users.php"><i class="fas fa-users"></i> Manage Users</a>
         <a href="manage_blogs.php"><i class="fas fa-blog"></i> Manage Blogs</a>
+        <a href="requests.php"><i class="fas fa-message"></i> Contact US </a>
         <a href="attendance.php"><i class="fas fa-check-circle"></i> Attendance</a>
-        <a href="register_cadet.php"><i class="fas fa-user-plus"></i> Register Cadet</a>
         <a href="achievement.php"><i class="fas fa-trophy"></i> Add Achievements</a>
         <a href="send_notification.php"><i class="fas fa-comment"></i> Send Notification</a>
         <a href="camp.php"><i class="fas fa-campground"></i> Add Camps</a>
@@ -420,6 +453,10 @@ $isAdmin = true;
                                 <input type="text" name="emergency_contact_number" id="emergency_contact_number" class="form-control" required>
                             </div>
                             <div class="mb-3">
+                                <label for="cadet_batch" class="form-label">Cadet Batch (Optional)</label>
+                                <input type="text" id="cadet_batch" name="cadet_batch" class="form-control" placeholder="e.g., Batch 2023" maxlength="50">
+                            </div>
+                            <div class="mb-3">
                                 <label for="profile_picture" class="form-label">Profile Picture (JPG, PNG, JPEG | Max: 5MB)</label>
                                 <input type="file" id="profile_picture" name="profile_picture" class="form-control" accept=".jpg,.jpeg,.png">
                             </div>
@@ -448,7 +485,6 @@ $isAdmin = true;
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
     <script>
-        // Notification fade-out
         $(document).ready(function() {
             <?php if ($notificationMessage || isset($_SESSION['success_message']) || isset($_SESSION['error_message'])): ?>
                 $('#notification').fadeIn().delay(3000).fadeOut();

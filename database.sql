@@ -1,4 +1,3 @@
-
 CREATE DATABASE IF NOT EXISTS ncc_prod;
 USE ncc_prod;
 
@@ -9,7 +8,6 @@ CREATE TABLE IF NOT EXISTS users (
     role ENUM('user', 'admin') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
 
 CREATE TABLE IF NOT EXISTS cadets (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -22,9 +20,11 @@ CREATE TABLE IF NOT EXISTS cadets (
     contact_number VARCHAR(15) NOT NULL,
     emergency_contact_number VARCHAR(15) NOT NULL,
     profile_picture VARCHAR(255),
+    cadet_batch VARCHAR(50) NULL,  -- Added this field
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Rest of the schema remains unchanged
 CREATE TABLE IF NOT EXISTS posts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -61,7 +61,6 @@ CREATE TABLE IF NOT EXISTS achievements (
     FOREIGN KEY (cadet_id) REFERENCES cadets(id) ON DELETE CASCADE
 );
 
-
 CREATE TABLE IF NOT EXISTS camps (
     id INT AUTO_INCREMENT PRIMARY KEY,
     camp_name VARCHAR(255) NOT NULL,
@@ -85,16 +84,18 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
 CREATE TABLE IF NOT EXISTS testimonials (
     id INT AUTO_INCREMENT PRIMARY KEY,
     image VARCHAR(255) DEFAULT NULL,
     title VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
-    `rank` VARCHAR(100) NOT NULL,  -- Escaping the reserved keyword 'rank'
+    `rank` VARCHAR(100) NOT NULL,
     description TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
 CREATE TABLE IF NOT EXISTS contact_messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -103,3 +104,6 @@ CREATE TABLE IF NOT EXISTS contact_messages (
     message TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE notifications
+ADD COLUMN `read` TINYINT DEFAULT 0;
+
