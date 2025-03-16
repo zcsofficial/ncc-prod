@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $isAdmin && isset($_POST['add_testim
                 'rank' => $rank,
                 'description' => $description
             ]);
-            $notificationMessage = "Testimonial added successfully!";
+            $notificationMessage = "Alumini added successfully!";
         } catch (PDOException $e) {
             $notificationMessage = "Error: " . $e->getMessage();
         }
@@ -396,7 +396,7 @@ if ($isLoggedIn) {
                                     <div class="modal-dialog">
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h5 class="modal-title" id="editTestimonialModalLabel_<?php echo $testimonial['id']; ?>">Edit Testimonial</h5>
+                                                <h5 class="modal-title" id="editTestimonialModalLabel_<?php echo $testimonial['id']; ?>">Edit Alumini</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
                                             <div class="modal-body">
@@ -438,13 +438,13 @@ if ($isLoggedIn) {
                                     <div class="modal-dialog">
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h5 class="modal-title" id="deleteTestimonialModalLabel_<?php echo $testimonial['id']; ?>">Delete Testimonial</h5>
+                                                <h5 class="modal-title" id="deleteTestimonialModalLabel_<?php echo $testimonial['id']; ?>">Delete Alumini</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
                                             <form action="testimonials.php" method="POST">
                                                 <div class="modal-body">
                                                     <input type="hidden" name="testimonial_id" value="<?php echo $testimonial['id']; ?>">
-                                                    <p>Are you sure you want to delete this testimonial by <?php echo htmlspecialchars($testimonial['name']); ?>?</p>
+                                                    <p>Are you sure you want to delete this Alumini by <?php echo htmlspecialchars($testimonial['name']); ?>?</p>
                                                 </div>
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -468,7 +468,7 @@ if ($isLoggedIn) {
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="addTestimonialModalLabel">Add Testimonial</h5>
+                        <h5 class="modal-title" id="addTestimonialModalLabel">Add Alumini</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
