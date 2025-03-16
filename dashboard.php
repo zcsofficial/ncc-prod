@@ -237,7 +237,7 @@ if ($isLoggedIn) {
                 ?>
                     <div class="col-md-4 mb-3">
                         <div class="card">
-                            <img src="<?php echo htmlspecialchars(!empty($post['image']) ? "{$post['image']}" : 'https://via.placeholder.com/400x300'); ?>" alt="Blog Image">
+                        <img src="<?php echo htmlspecialchars(!empty($post['image']) ? "uploads/{$post['image']}" : 'https://via.placeholder.com/400x300'); ?>" alt="Blog Image">
                             <div class="card-body">
                                 <h5 class="card-title"><?php echo htmlspecialchars($post['title']); ?></h5>
                                 <p class="card-text"><?php echo substr(htmlspecialchars($post['body']), 0, 100); ?>...</p>
