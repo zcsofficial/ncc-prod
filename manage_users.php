@@ -303,7 +303,7 @@ $isAdmin = true;
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1 class="my-3">Manage Users</h1>
                 <div>
-                    <a href="register_cadet.php" class="btn btn-add me-2"><i class="fas fa-plus"></i> Add User</a>
+                    <a href="register.php" class="btn btn-add me-2"><i class="fas fa-plus"></i> Add User</a>
                     <a href="admin_console.php" class="btn btn-back"><i class="fas fa-arrow-left"></i> Back</a>
                 </div>
             </div>
