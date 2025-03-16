@@ -1,8 +1,8 @@
 <?php
 // Database connection settings
 $host = 'localhost';        // Database host (usually 'localhost')
-$dbname = 'ncc_prod'; // Your database name
-$username = 'root';          // Your database username
+$dbname = 'u324921317_ncc_prod'; // Your database name
+$username = 'u324921317_shadhil';          // Your database username
 $password = 'Adnan@66202';              // Your database password (empty if there's no password)
 
 try {
