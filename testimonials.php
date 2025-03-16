@@ -366,28 +366,30 @@ if ($isLoggedIn) {
                     <?php else: ?>
                         <?php foreach ($testimonials as $testimonial): ?>
                             <div class="col-md-4 mb-3">
-                                <div class="card">
-                                    <img src="<?php echo htmlspecialchars(!empty($testimonial['image']) ? "uploads/{$testimonial['image']}" : 'https://via.placeholder.com/400x300'); ?>" alt="Testimonial Image">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-start">
-                                            <img src="<?php echo htmlspecialchars(!empty($testimonial['image']) ? "uploads/{$testimonial['image']}" : 'https://via.placeholder.com/80'); ?>" class="profile-img" alt="Profile Image">
-                                            <div>
-                                                <h5 class="card-title"><?php echo htmlspecialchars($testimonial['title']); ?></h5>
-                                                <p class="card-text"><?php echo substr(htmlspecialchars($testimonial['description']), 0, 100); ?>...</p>
-                                            </div>
-                                        </div>
-                                        <?php if ($isAdmin): ?>
-                                            <div class="mt-2">
-                                                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editTestimonialModal_<?php echo $testimonial['id']; ?>">
-                                                    <i class="fas fa-edit"></i> Edit
-                                                </button>
-                                                <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteTestimonialModal_<?php echo $testimonial['id']; ?>">
-                                                    <i class="fas fa-trash"></i> Delete
-                                                </button>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
+    <div class="card">
+        <img src="<?php echo htmlspecialchars(!empty($testimonial['image']) ? "uploads/{$testimonial['image']}" : 'https://via.placeholder.com/400x300'); ?>" alt="Testimonial Image">
+        <div class="card-body">
+            <div class="d-flex justify-content-start">
+                <img src="<?php echo htmlspecialchars(!empty($testimonial['image']) ? "uploads/{$testimonial['image']}" : 'https://via.placeholder.com/80'); ?>" class="profile-img" alt="Profile Image">
+                <div>
+                    <h5 class="card-title"><?php echo htmlspecialchars($testimonial['title']); ?></h5>
+                    <p class="card-text"><?php echo substr(htmlspecialchars($testimonial['description']), 0, 100); ?>...</p>
+                </div>
+            </div>
+            <?php if ($isAdmin): ?>
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editTestimonialModal_<?php echo $testimonial['id']; ?>">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteTestimonialModal_<?php echo $testimonial['id']; ?>">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            <?php endif; ?>
+           
+        </div>
+    </div>
+</div>
                             </div>
 
                             <!-- Edit Testimonial Modal -->
