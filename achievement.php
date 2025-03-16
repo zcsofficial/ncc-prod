@@ -446,25 +446,25 @@ if ($isLoggedIn) {
                     <?php else: ?>
                         <?php foreach ($achievements as $achievement): ?>
                             <div class="col-md-4">
-                                <div class="card achievement-card mb-4">
-                                    <img src="<?php echo htmlspecialchars($achievement['certificate'] ?: 'https://via.placeholder.com/400x300'); ?>" class="card-img-top" alt="Certificate Image">
-                                    <div class="card-body">
-                                        <h5 class="card-title"><?php echo htmlspecialchars($achievement['achievement_name']); ?></h5>
-                                        <p class="card-text">Achieved by: <?php echo htmlspecialchars($achievement['full_name']); ?></p>
-                                        <p class="card-text">Date: <?php echo date('F j, Y', strtotime($achievement['achievement_date'])); ?></p>
-                                        <?php if ($isAdmin): ?>
-                                            <div class="mt-2">
-                                                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editAchievementModal_<?php echo $achievement['id']; ?>">
-                                                    <i class="fas fa-edit"></i> Edit
-                                                </button>
-                                                <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAchievementModal_<?php echo $achievement['id']; ?>">
-                                                    <i class="fas fa-trash"></i> Delete
-                                                </button>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            </div>
+    <div class="card achievement-card mb-4">
+        <img src="<?php echo htmlspecialchars($achievement['certificate'] ?: 'https://via.placeholder.com/400x300'); ?>" class="card-img-top" alt="Certificate Image">
+        <div class="card-body">
+            <h5 class="card-title"><?php echo htmlspecialchars($achievement['achievement_name']); ?></h5>
+            <p class="card-text">Achieved by: <?php echo htmlspecialchars($achievement['full_name']); ?></p>
+            <p class="card-text">Date: <?php echo date('F j, Y', strtotime($achievement['achievement_date'])); ?></p>
+            <?php if ($isAdmin): ?>
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editAchievementModal_<?php echo $achievement['id']; ?>">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAchievementModal_<?php echo $achievement['id']; ?>">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
 
                             <!-- Edit Achievement Modal -->
                             <?php if ($isAdmin): ?>
